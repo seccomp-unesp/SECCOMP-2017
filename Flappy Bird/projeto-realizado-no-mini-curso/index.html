@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Flappy Bird</title>
+	<style>
+		canvas {
+			position: absolute;
+			top: 0;
+			bottom: 0;
+			left: 0;
+			right: 0;
+			margin: auto;
+			border: 1px solid black;
+		}
+	</style>
+</head>
+<body>
+<canvas id="myCanvas"></canvas>
+<script>
+	var canvas = document.getElementById("myCanvas")
+	canvas.width = 432;
+	canvas.height = 768;
+
+	var ctx = canvas.getContext("2d")
+
+	var spritesheet = new Image();
+	spritesheet.src = "sprites.png";
+
+	var bg_spr = [0, 0, 432, 768];
+	var ground_spr = [438, 0, 462, 168];
+	var pipe_up_spr = [906, 0, 78, 405];
+	var pipe_down_spr = [990, 0, 78, 363];
+	var scoreboard_spr = [438, 174, 339, 174];
+	var tap = [516, 366, 114, 147];
+	var get_ready_spr = [438, 663, 261, 66];
+	var game_over_spr = [438, 597, 282, 57];
+	var flappy_title_spr = [438, 519, 288, 66];
+	var new_lbl_spr = [438, 735, 48, 21];
+
+	var bird_spr = [
+		[792, 192, 51, 36],
+		[792, 270, 51, 36],
+		[669, 372, 51, 36],
+		[792, 270, 51, 36]
+	];
+
+	var num_spr = [
+		[864, 300, 21, 30],
+		[870, 354, 21, 30],
+		[867, 402, 21, 30],
+		[867, 450, 21, 30],
+		[861, 519, 21, 30],
+		[861, 555, 21, 30],
+		[495, 735, 21, 30],
+		[525, 735, 21, 30],
+		[555, 735, 21, 30],
+		[585, 735, 21, 30],
+	];
+
+	var small_nums_spr = [
+		[861, 222, 18, 21],
+		[868, 486, 18, 21],
+		[612, 735, 18, 21],
+		[636, 735, 18, 21],
+		[660, 735, 18, 21],
+		[684, 735, 18, 21],
+		[852, 591, 18, 21],
+		[876, 591, 18, 21], 
+		[852, 639, 18, 21],
+		[876, 639, 18, 21],
+	];
+
+	var coins_spr = [
+		[906, 411, 66, 66],
+		[798, 687, 66, 66],
+		[726, 687, 66, 66],
+		[660, 432, 66, 66],
+	];
+
+	var bird = {
+		frame: 0,
+		x: 80,
+		y: 300,
+		vy: 0,
+		jump: 8,
+	};
+
+	var gameStates = {
+		waiting: 0,
+		playing: 1,
+		gameOver: 2
+	};
+	var currentState = gameStates.waiting;
+
+	var groundX = 0;
+	var scrollSpeed = 2;
+	var frames = 0;
+	var gravity = 0.5;
+
+	var pipes = [];
+
+	function createPipe() {
+		var yPipe = canvas.height - ground_spr[3] - Math.ceil(Math.random() * 6) * pipe_down_spr[3] / 6;
+		pipes.push([canvas.width, yPipe])
+	}
+
+	function drawSprite(sprite, x, y) {
+		ctx.drawImage(spritesheet, sprite[0], sprite[1], sprite[2], sprite[3], x, y, sprite[2], sprite[3]);
+	}
+
+	function drawPipes() {
+		for (var i = 0; i < pipes.length; i++) {
+			var pipe = pipes[i];
+			drawSprite(pipe_down_spr, pipe[0], pipe[1])
+			drawSprite(pipe_up_spr, pipe[0], pipe[1] - pipe_up_spr[3] - 134)
+		}
+	}
+
+	window.addEventListener("click", function() {
+		if (currentState == gameStates.waiting) {
+			currentState = gameStates.playing
+		} else if (currentState == gameStates.playing) {
+			bird.vy = -bird.jump;
+		} else {
+			reset();
+		}
+	})
+
+	function reset() {
+		currentState = gameStates.waiting;
+
+		bird.y = 300;
+		bird.vy = 0;
+		pipes = [];
+	}
+
+	function gameOver() {
+		currentState = gameStates.gameOver
+		console.log("GAME OVER")
+	}
+
+	function update() {
+		if (currentState != gameStates.gameOver) {
+			groundX -= scrollSpeed;
+			if (groundX <= -21)
+				groundX = 0;
+		}
+
+		if (currentState != gameStates.waiting) {
+			bird.vy += gravity;
+			bird.y += bird.vy;
+		}
+
+		if (frames % 12 == 0) {
+			if (bird.frame == bird_spr.length - 1)
+				bird.frame = 0
+			else
+				bird.frame++;
+		}
+
+		if (currentState == gameStates.playing) {
+			if (frames % 120 == 0) {
+				createPipe();
+			}
+
+			for (var i = 0; i < pipes.length; i++) {
+				var pipe = pipes[i];
+				pipe[0] -= scrollSpeed;
+
+				if (pipe[0] <= -pipe_up_spr[2]) {
+					pipes.splice(i, 1)
+					i--;
+				}
+
+				if (pipe[0] <= bird.x && pipe[0] + pipe_up_spr[2] >= bird.x) {
+					if (bird.y + bird_spr[0][3] >= pipe[1] || bird.y < pipe[1] - 134) {
+						gameOver();
+					}
+				}
+			}
+
+			// Colisões
+			if (bird.y + bird_spr[0][3] >= canvas.height - ground_spr[3]) {
+				gameOver();
+			}
+		}
+
+		if (currentState == gameStates.waiting)
+			bird.y += Math.cos(frames / 10)
+	}
+
+	function draw() {
+		frames++;
+
+		ctx.clearRect(0, 0, canvas.width, canvas.height)
+		
+		drawSprite(bg_spr, 0, 0);
+
+		drawPipes();
+
+		drawSprite(ground_spr, groundX, canvas.height - ground_spr[3])
+
+		drawSprite(bird_spr[bird.frame], bird.x, bird.y)
+
+		if (currentState == gameStates.waiting)
+			drawSprite(flappy_title_spr, (canvas.width - flappy_title_spr[2]) / 2, 200)
+	}
+
+	function run() {
+		update();
+		draw();
+
+		window.requestAnimationFrame(run);
+	}
+
+	run();
+
+
+	// alert("Hello World!")
+</script>
+</body>
+</html>
